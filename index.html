@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Privacy Paste Checker</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-border: #2a2f3a;
+    --text: #e6e8ec;
+    --text-dim: #9aa2af;
+    --accent: #5fb3ff;
+    --accent-dim: #2f6690;
+    --ok: #4caf7d;
+    --warn: #e0a63c;
+    --danger: #e0616b;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+  }
+
+  main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    margin: 0 0 4px;
+  }
+
+  .subhead {
+    color: var(--text-dim);
+    margin: 0 0 24px;
+    font-size: 1rem;
+  }
+
+  .privacy-note {
+    display: inline-block;
+    font-size: 0.85rem;
+    color: var(--ok);
+    background: rgba(76, 175, 125, 0.1);
+    border: 1px solid rgba(76, 175, 125, 0.35);
+    border-radius: 6px;
+    padding: 6px 12px;
+    margin-bottom: 24px;
+  }
+
+  section {
+    margin-bottom: 28px;
+  }
+
+  label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 160px;
+    resize: vertical;
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 12px;
+    font-family: var(--mono);
+    font-size: 0.9rem;
+  }
+
+  textarea:focus, button:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .button-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  button {
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    background: var(--panel);
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  button:hover:not(:disabled) {
+    border-color: var(--accent);
+  }
+
+  button.primary {
+    background: var(--accent-dim);
+    border-color: var(--accent-dim);
+    color: #fff;
+  }
+
+  button.primary:hover:not(:disabled) {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .alert {
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 0.9rem;
+    margin-top: 14px;
+  }
+
+  .alert.error {
+    background: rgba(224, 97, 107, 0.12);
+    border: 1px solid rgba(224, 97, 107, 0.4);
+    color: var(--danger);
+  }
+
+  .alert.hint {
+    background: rgba(154, 162, 175, 0.08);
+    border: 1px solid var(--panel-border);
+    color: var(--text-dim);
+  }
+
+  .status {
+    font-weight: 600;
+    margin: 14px 0 10px;
+    font-size: 1rem;
+  }
+
+  .status.status-ok { color: var(--ok); }
+  .status.status-warn { color: var(--warn); }
+
+  .preview-box {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 12px;
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    min-height: 80px;
+  }
+
+  mark {
+    border-radius: 3px;
+    padding: 0 2px;
+    cursor: help;
+    color: #10131a;
+  }
+
+  mark.sev-high { background: var(--danger); }
+  mark.sev-medium { background: var(--warn); }
+  mark.sev-low { background: var(--accent); }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin: 10px 0 4px;
+  }
+
+  .legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .legend i {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    display: inline-block;
+  }
+
+  .legend .dot-high { background: var(--danger); }
+  .legend .dot-medium { background: var(--warn); }
+  .legend .dot-low { background: var(--accent); }
+
+  #reason-line {
+    font-size: 0.9rem;
+    color: var(--text);
+    background: rgba(95, 179, 255, 0.1);
+    border: 1px solid rgba(95, 179, 255, 0.35);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-top: 10px;
+    display: none;
+  }
+
+  .findings-list {
+    list-style: none;
+    margin: 14px 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .findings-list li {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+
+  .findings-list .f-type {
+    font-weight: 600;
+    font-family: var(--mono);
+  }
+
+  .findings-list .f-reason {
+    color: var(--text-dim);
+  }
+
+  .rescan-line {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  .why-panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    font-size: 0.92rem;
+  }
+
+  .why-panel .stat {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 0 0 8px;
+  }
+
+  .why-panel .source {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    word-break: break-all;
+  }
+
+  .how-it-works {
+    border-top: 1px solid var(--panel-border);
+    padding-top: 24px;
+    font-size: 0.92rem;
+    color: var(--text-dim);
+  }
+
+  .how-it-works h2 {
+    color: var(--text);
+    font-size: 1.1rem;
+  }
+
+  .how-it-works ul {
+    padding-left: 20px;
+  }
+
+  .how-it-works code {
+    font-family: var(--mono);
+    background: var(--panel);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  footer {
+    margin-top: 32px;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>AI Privacy Paste Checker</h1>
+  <p class="subhead">Paste the message you are about to send to ChatGPT or Claude. This checks it for things you probably should not share, like a Social Security number, a card number, or your email, and explains why in plain words.</p>
+  <div class="privacy-note">Everything runs in your browser. Nothing you paste is uploaded, stored, or sent anywhere.</div>
+
+  <section>
+    <label for="input-text">Paste what you are about to send</label>
+    <textarea id="input-text" placeholder="Paste your message here. A sample message is loaded below so you can see how this works."></textarea>
+    <div class="button-row">
+      <button id="btn-check" class="primary" type="button">Check</button>
+      <button id="btn-load-example" type="button">Load example</button>
+      <button id="btn-clear" type="button">Clear</button>
+    </div>
+    <div id="input-error" class="alert error" style="display:none;"></div>
+  </section>
+
+  <section>
+    <div id="results-hint" class="alert hint" style="display:none;">Paste something above and click "Check" to see what it finds.</div>
+    <div id="results-body">
+      <div id="status-line" class="status"></div>
+
+      <div class="legend">
+        <span><i class="dot-high"></i> Needs to come out</span>
+        <span><i class="dot-medium"></i> Worth a second look</span>
+        <span><i class="dot-low"></i> Just a nudge to think</span>
+      </div>
+
+      <label for="highlighted-preview">What was found, marked in your text</label>
+      <div id="highlighted-preview" class="preview-box"></div>
+      <div id="reason-line"></div>
+
+      <ul id="findings-list" class="findings-list"></ul>
+
+      <label for="output-text">Cleaned version, ready to send instead</label>
+      <textarea id="output-text" readonly></textarea>
+      <div class="button-row">
+        <button id="btn-copy" type="button" disabled>Copy the cleaned version</button>
+      </div>
+      <div id="rescan-line" class="rescan-line"></div>
+    </div>
+  </section>
+
+  <section class="why-panel">
+    <h2 style="margin-top:0;">Why this matters</h2>
+    <p class="stat">Sensitive data is now about 34.8% of what employees paste into ChatGPT, up from about 11% in 2023.</p>
+    <p>Most people do not think of an AI chat as something that could expose them. It feels private, like a conversation. But the text you type is sent to a company's servers, and once it is out of your hands, you cannot take it back. Being careful about what goes into the box is the only real control you have.</p>
+    <p>Sources, shown here as plain text (not links this page loads for you, just where the numbers and advice come from):</p>
+    <p class="source">Source 1: https://www.metomic.io/resource-centre/is-chatgpt-a-security-risk-to-your-business</p>
+    <p class="source">Source 2: https://tech.co/news/things-never-share-chatgpt</p>
+  </section>
+
+  <section class="how-it-works">
+    <h2>What it checks</h2>
+    <p>Checking happens the moment you stop typing, or when you click "Check." Every check below is a plain function in <code>core.js</code>, and none of them ever send your text anywhere.</p>
+    <ul>
+      <li><strong>Social Security numbers</strong>: the standard written form, like <code>123-45-6789</code>. A few obviously fake patterns (like an all-zero group) are skipped so the tool is not overly twitchy.</li>
+      <li><strong>Credit and debit card numbers</strong>: any string of 13 to 19 digits is checked using the same math card issuers use to confirm a card number could be real (called a Luhn check). This means a random 16-digit number typed by chance is not flagged, only one that actually passes that check.</li>
+      <li><strong>Email addresses</strong> and <strong>phone numbers</strong>: common written formats for both.</li>
+      <li id="keyword-list-target"><strong>Health and financial words</strong>: a curated list of words like "diagnosis," "prescription," "salary," "account balance," "routing number," and "password." These are not confirmed sensitive data the way a Social Security number is, just a nudge to double check what you are about to send.</li>
+    </ul>
+    <p>Known limits, stated plainly: this is a helpful check, not a perfect one. A made-up number can occasionally pass the same math a real card number would (this happens by chance about 1 in 10 times for a random string of digits), and the health and financial word list only knows the words it was given. It will miss things it was not built to catch. It is a second pair of eyes, not a guarantee.</p>
+    <p>Clicking "Copy the cleaned version" re-checks the cleaned text first. The button only becomes clickable once that re-check finds nothing left.</p>
+  </section>
+
+  <footer>
+    AI Privacy Paste Checker. No backend, no accounts, no analytics. MIT licensed.
+  </footer>
+</main>
+
+<script src="core.js"></script>
+<script>
+(function () {
+  var inputEl = document.getElementById('input-text');
+  var inputErrorEl = document.getElementById('input-error');
+  var resultsHintEl = document.getElementById('results-hint');
+  var statusLineEl = document.getElementById('status-line');
+  var previewEl = document.getElementById('highlighted-preview');
+  var reasonLineEl = document.getElementById('reason-line');
+  var findingsListEl = document.getElementById('findings-list');
+  var outputEl = document.getElementById('output-text');
+  var rescanLineEl = document.getElementById('rescan-line');
+  var copyBtn = document.getElementById('btn-copy');
+  var debounceTimer = null;
+
+  // Build the "what it checks" keyword list from the same data core.js uses
+  // for detection, so the page copy can never drift out of sync with the code.
+  (function renderKeywordList() {
+    var li = document.getElementById('keyword-list-target');
+    var health = KEYWORDS.filter(function (k) { return k.category === 'health'; }).map(function (k) { return k.term; });
+    var financial = KEYWORDS.filter(function (k) { return k.category === 'financial'; }).map(function (k) { return k.term; });
+    var extra = document.createElement('div');
+    extra.style.marginTop = '6px';
+    extra.innerHTML =
+      '<div>Health words: <code>' + health.join('</code>, <code>') + '</code></div>' +
+      '<div>Financial words: <code>' + financial.join('</code>, <code>') + '</code></div>';
+    li.appendChild(extra);
+  })();
+
+  document.getElementById('btn-load-example').addEventListener('click', function () {
+    inputEl.value = EXAMPLE_FIXTURE;
+    hideError();
+    runCheck();
+  });
+
+  document.getElementById('btn-clear').addEventListener('click', function () {
+    inputEl.value = '';
+    hideError();
+    renderResults('');
+  });
+
+  document.getElementById('btn-check').addEventListener('click', function () {
+    hideError();
+    runCheck();
+  });
+
+  inputEl.addEventListener('input', function () {
+    hideError();
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(runCheck, 350);
+  });
+
+  copyBtn.addEventListener('click', function () {
+    if (copyBtn.disabled) return;
+    outputEl.select();
+    navigator.clipboard && navigator.clipboard.writeText(outputEl.value);
+    copyBtn.textContent = 'Copied';
+    setTimeout(function () { copyBtn.textContent = 'Copy the cleaned version'; }, 1500);
+  });
+
+  // Tap-to-reveal: clicking a highlighted span shows its reason in a visible
+  // line, for touch users where a hover title does not show up.
+  previewEl.addEventListener('click', function (e) {
+    var target = e.target;
+    if (target && target.tagName === 'MARK') {
+      reasonLineEl.textContent = target.getAttribute('data-reason');
+      reasonLineEl.style.display = 'block';
+    }
+  });
+
+  function runCheck() {
+    var text = inputEl.value;
+    if (!text || !text.trim()) {
+      showError('Paste something first. There is nothing to check yet.');
+      renderResults('');
+      return;
+    }
+    renderResults(text);
+  }
+
+  function showError(message) {
+    inputErrorEl.textContent = message;
+    inputErrorEl.style.display = 'block';
+  }
+
+  function hideError() {
+    inputErrorEl.style.display = 'none';
+  }
+
+  function renderResults(text) {
+    reasonLineEl.style.display = 'none';
+    findingsListEl.innerHTML = '';
+
+    if (!text) {
+      resultsHintEl.style.display = 'block';
+      statusLineEl.textContent = '';
+      previewEl.textContent = '';
+      outputEl.value = '';
+      rescanLineEl.textContent = '';
+      copyBtn.disabled = true;
+      return;
+    }
+
+    resultsHintEl.style.display = 'none';
+
+    var findings = scanText(text);
+    statusLineEl.textContent = summaryLine(findings);
+    statusLineEl.className = findings.length === 0 ? 'status status-ok' : 'status status-warn';
+
+    previewEl.innerHTML = buildHighlightedHtml(text, findings);
+
+    findings.forEach(function (f) {
+      var li = document.createElement('li');
+      var typeEl = document.createElement('div');
+      typeEl.className = 'f-type';
+      typeEl.textContent = f.type + ': "' + f.match + '"';
+      var reasonEl = document.createElement('div');
+      reasonEl.className = 'f-reason';
+      reasonEl.textContent = f.reason;
+      li.appendChild(typeEl);
+      li.appendChild(reasonEl);
+      findingsListEl.appendChild(li);
+    });
+
+    if (findings.length === 0) {
+      outputEl.value = text;
+      rescanLineEl.textContent = 'Nothing to clean. This looks safe to send as is.';
+      copyBtn.disabled = false;
+      return;
+    }
+
+    var redacted = redactText(text);
+    outputEl.value = redacted.cleaned;
+
+    var rescan = scanText(redacted.cleaned);
+    if (rescan.length === 0) {
+      rescanLineEl.textContent = 'Rechecked the cleaned version: nothing risky found. Safe to copy.';
+      copyBtn.disabled = false;
+    } else {
+      rescanLineEl.textContent = 'Rechecked the cleaned version and it still found ' + rescan.length + ' thing(s). Copy is turned off until this reaches zero.';
+      copyBtn.disabled = true;
+    }
+  }
+
+  // Load and check the built-in sample the moment the page opens, so a
+  // stranger sees the detector work before they type anything at all.
+  inputEl.value = EXAMPLE_FIXTURE;
+  renderResults(EXAMPLE_FIXTURE);
+})();
+</script>
+</body>
+</html>
